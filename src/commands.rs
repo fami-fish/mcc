@@ -1,3 +1,5 @@
+use poise::{serenity_prelude::MessageBuilder, CreateReply};
+
 use crate::{get_sitemap, Data};
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -55,8 +57,29 @@ pub async fn docs(
     ctx: Context<'_>,
     #[description = "The slug of the url"]
     #[autocomplete = "autocomplete_docs_slug"]
-    slug: String,
+    mut slug: String,
 ) -> Result<(), Error> {
+    if (!slug.starts_with("/")) {
+        slug = "/".to_owned() + &slug;
+    }
+
+    if !get_sitemap().await.unwrap().iter().any(|s| {
+        s.starts_with(
+            format!(
+                "https://motioncanvas.io/docs{}",
+                &slug[0..slug.find("#").unwrap_or(slug.len())]
+            )
+            .as_str(),
+        )
+    }) {
+        ctx.send(|m| {
+            m.ephemeral(true)
+                .content("Invalid slug. That doesn't look like a page on the current version of the docs. Try using one of the provided options.")
+        })
+        .await?;
+
+        return Ok(());
+    }
     ctx.say(format!("https://motioncanvas.io/docs{}", slug))
         .await?;
 
@@ -69,8 +92,29 @@ pub async fn api(
     ctx: Context<'_>,
     #[description = "The slug of the api"]
     #[autocomplete = "autocomplete_api_slug"]
-    slug: String,
+    mut slug: String,
 ) -> Result<(), Error> {
+    if (!slug.starts_with("/")) {
+        slug = "/".to_owned() + &slug;
+    }
+
+    if !get_sitemap().await.unwrap().iter().any(|s| {
+        s.starts_with(
+            format!(
+                "https://motioncanvas.io/api{}",
+                &slug[0..slug.find("#").unwrap_or(slug.len())]
+            )
+            .as_str(),
+        )
+    }) {
+        ctx.send(|m| {
+            m.ephemeral(true)
+                .content("Invalid slug. That doesn't look like a page on the current version of the docs. Try using one of the provided options.")
+        })
+        .await?;
+
+        return Ok(());
+    }
     ctx.say(format!("https://motioncanvas.io/api{}", slug))
         .await?;
 
