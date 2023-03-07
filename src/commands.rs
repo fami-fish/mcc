@@ -1,3 +1,5 @@
+use urlencoding::encode;
+
 use crate::get_sitemap;
 use crate::Data;
 
@@ -79,8 +81,19 @@ pub async fn docs(
 
         return Ok(());
     }
-    ctx.say(format!("https://motioncanvas.io/docs{}", slug))
-        .await?;
+    let encoded =
+        encode(&slug[slug.find("#").unwrap_or(slug.len() - 1) + 1..slug.len()]).to_string();
+
+    ctx.say(format!(
+        "https://motioncanvas.io/docs{}{}",
+        &slug[..slug.find("#").unwrap_or(slug.len())],
+        if encoded == "" {
+            "".to_owned()
+        } else {
+            format!("#{}", encoded)
+        }
+    ))
+    .await?;
 
     Ok(())
 }
@@ -114,8 +127,20 @@ pub async fn api(
 
         return Ok(());
     }
-    ctx.say(format!("https://motioncanvas.io/api{}", slug))
-        .await?;
+
+    let encoded =
+        encode(&slug[slug.find("#").unwrap_or(slug.len() - 1) + 1..slug.len()]).to_string();
+
+    ctx.say(format!(
+        "https://motioncanvas.io/api{}{}",
+        &slug[..slug.find("#").unwrap_or(slug.len())],
+        if encoded == "" {
+            "".to_owned()
+        } else {
+            format!("#{}", encoded)
+        }
+    ))
+    .await?;
 
     Ok(())
 }

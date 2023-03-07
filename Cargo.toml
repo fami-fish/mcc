@@ -1,5 +1,5 @@
 [package]
-name = "shuttle"
+name = "mcb"
 version = "0.1.0"
 edition = "2021"
 publish = false
@@ -17,4 +17,5 @@ shuttle-secrets = "0.11.0"
 shuttle-service = { version = "0.11.0"}
 sync_wrapper = "0.1.2"
 tokio = "1.22.0"
-reqwest="0.11.14"
+reqwest = "0.11.14"
+urlencoding = "2.1.2"
