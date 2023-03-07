@@ -1,11 +1,17 @@
-use poise::{serenity_prelude::GatewayIntents, FrameworkBuilder};
+use poise::{
+    serenity_prelude::{GatewayIntents, RwLock},
+    FrameworkBuilder,
+};
 use std::fmt;
 mod commands;
-use commands::{api, docs};
+use commands::{api, docs, generate_sitemap};
 use serde::Deserialize;
 use shuttle_secrets::SecretStore;
 
-pub struct Data {}
+pub struct Data {
+    sitemap: RwLock<Vec<String>>,
+}
+
 pub struct PoiseService {
     discord_bot:
         FrameworkBuilder<Data, Box<(dyn std::error::Error + std::marker::Send + Sync + 'static)>>,
@@ -32,7 +38,7 @@ async fn init(
 
     let discord_bot = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![docs(), api()],
+            commands: vec![docs(), api(), generate_sitemap()],
             ..Default::default()
         })
         .token(discord_api_key)
@@ -40,7 +46,9 @@ async fn init(
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                Ok(Data {})
+                Ok(Data {
+                    sitemap: RwLock::new(get_sitemap().await.map_err(|e| anyhow::Error::new(e))?),
+                })
             })
         });
 
@@ -84,7 +92,19 @@ impl From<&str> for XmlFetchError {
     }
 }
 
-pub async fn get_sitemap() -> Result<Vec<String>, XmlFetchError> {
+impl From<anyhow::Error> for XmlFetchError {
+    fn from(value: anyhow::Error) -> Self {
+        XmlFetchError(value.to_string())
+    }
+}
+
+impl std::error::Error for XmlFetchError {
+    fn description(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+async fn get_sitemap() -> Result<Vec<String>, XmlFetchError> {
     let res = reqwest::Client::new()
         .get("https://motioncanvas.io/sitemap.xml")
         .header("Accept", "application/xml")
@@ -92,12 +112,9 @@ pub async fn get_sitemap() -> Result<Vec<String>, XmlFetchError> {
         .await?
         .text()
         .await?;
-
     let set: UrlSet = serde_xml_rs::from_str(&res).map_err(XmlFetchError::from)?;
 
     let entries: Vec<UrlEntry> = set.url;
 
-    let endpoints: Vec<String> = entries.iter().map(|x| x.loc.to_string()).collect();
-
-    Ok(endpoints)
+    Ok(entries.iter().map(|x| x.loc.to_string()).collect())
 }

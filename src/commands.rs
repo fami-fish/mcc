@@ -1,12 +1,11 @@
-use poise::{serenity_prelude::MessageBuilder, CreateReply};
-
-use crate::{get_sitemap, Data};
+use crate::get_sitemap;
+use crate::Data;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
-async fn autocomplete_docs_slug<'a>(_ctx: Context<'a>, partial: &'a str) -> Vec<String> {
-    let sitemap = get_sitemap().await.unwrap();
+async fn autocomplete_docs_slug<'a>(ctx: Context<'a>, partial: &'a str) -> Vec<String> {
+    let sitemap = &ctx.data().sitemap.read().await;
 
     sitemap
         .iter()
@@ -28,8 +27,8 @@ async fn autocomplete_docs_slug<'a>(_ctx: Context<'a>, partial: &'a str) -> Vec<
         .collect::<Vec<String>>()
 }
 
-async fn autocomplete_api_slug<'a>(_ctx: Context<'a>, partial: &'a str) -> Vec<String> {
-    let sitemap = get_sitemap().await.unwrap();
+async fn autocomplete_api_slug<'a>(ctx: Context<'a>, partial: &'a str) -> Vec<String> {
+    let sitemap = &ctx.data().sitemap.read().await;
 
     sitemap
         .iter()
@@ -51,7 +50,7 @@ async fn autocomplete_api_slug<'a>(_ctx: Context<'a>, partial: &'a str) -> Vec<S
         .collect::<Vec<String>>()
 }
 
-/// Get a url to the motion canvas documentation
+/// Get a link to the Motion Canvas documentation
 #[poise::command(slash_command)]
 pub async fn docs(
     ctx: Context<'_>,
@@ -59,11 +58,11 @@ pub async fn docs(
     #[autocomplete = "autocomplete_docs_slug"]
     mut slug: String,
 ) -> Result<(), Error> {
-    if (!slug.starts_with("/")) {
+    if !slug.starts_with("/") {
         slug = "/".to_owned() + &slug;
     }
 
-    if !get_sitemap().await.unwrap().iter().any(|s| {
+    if !ctx.data().sitemap.read().await.iter().any(|s| {
         s.starts_with(
             format!(
                 "https://motioncanvas.io/docs{}",
@@ -86,7 +85,7 @@ pub async fn docs(
     Ok(())
 }
 
-/// Get a url to the motion canvas api
+/// Get a link to the Motion Canvas API
 #[poise::command(slash_command)]
 pub async fn api(
     ctx: Context<'_>,
@@ -94,11 +93,11 @@ pub async fn api(
     #[autocomplete = "autocomplete_api_slug"]
     mut slug: String,
 ) -> Result<(), Error> {
-    if (!slug.starts_with("/")) {
+    if !slug.starts_with("/") {
         slug = "/".to_owned() + &slug;
     }
 
-    if !get_sitemap().await.unwrap().iter().any(|s| {
+    if !ctx.data().sitemap.read().await.iter().any(|s| {
         s.starts_with(
             format!(
                 "https://motioncanvas.io/api{}",
@@ -116,6 +115,20 @@ pub async fn api(
         return Ok(());
     }
     ctx.say(format!("https://motioncanvas.io/api{}", slug))
+        .await?;
+
+    Ok(())
+}
+
+/// Regenerates the sitemap
+#[poise::command(slash_command, default_member_permissions = "ADMINISTRATOR")]
+pub async fn generate_sitemap(ctx: Context<'_>) -> Result<(), Error> {
+    let mut lock = ctx.data().sitemap.write().await;
+    *lock = get_sitemap().await?;
+
+    drop(lock);
+
+    ctx.send(|m| m.ephemeral(true).content("Sucessfully updates sitemap"))
         .await?;
 
     Ok(())
