@@ -1,10 +1,7 @@
 use urlencoding::encode;
 
 use crate::get_sitemap;
-use crate::Data;
-
-type Error = Box<dyn std::error::Error + Send + Sync>;
-type Context<'a> = poise::Context<'a, Data, Error>;
+use crate::{Context, Data, Error};
 
 async fn autocomplete_docs_slug<'a>(ctx: Context<'a>, partial: &'a str) -> Vec<String> {
     let sitemap = &ctx.data().sitemap.read().await;
